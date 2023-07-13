@@ -68,12 +68,12 @@ class Protocol(object):
         try:
             read_timeout_sec = int(read_timeout_sec)
         except ValueError as ve:
-            raise ValueError("failed to parse read_timeout_sec as int: %s" % str(ve))
+            raise ValueError(f"failed to parse read_timeout_sec as int: {str(ve)}")
 
         try:
             operation_timeout_sec = int(operation_timeout_sec)
         except ValueError as ve:
-            raise ValueError("failed to parse operation_timeout_sec as int: %s" % str(ve))
+            raise ValueError(f"failed to parse operation_timeout_sec as int: {str(ve)}")
 
         if operation_timeout_sec >= read_timeout_sec or operation_timeout_sec < 1:
             raise WinRMError("read_timeout_sec must exceed operation_timeout_sec, and both must be non-zero")
@@ -240,8 +240,7 @@ class Protocol(object):
         # TODO add message_id vs relates_to checking
         # TODO port error handling code
         try:
-            resp = self.transport.send_message(message)
-            return resp
+            return self.transport.send_message(message)
         except WinRMTransportError as ex:
             try:
                 # if response is XML-parseable, it's probably a SOAP fault; extract the details
@@ -358,10 +357,9 @@ class Protocol(object):
 
         res = self.send_message(xmltodict.unparse(req))
         root = ET.fromstring(res)
-        command_id = next(
-            node for node in root.findall('.//*')
-            if node.tag.endswith('CommandId')).text
-        return command_id
+        return next(
+            node for node in root.findall('.//*') if node.tag.endswith('CommandId')
+        ).text
 
     def cleanup_command(self, shell_id, command_id):
         """
@@ -420,10 +418,7 @@ class Protocol(object):
             'rsp:Send', {}).setdefault('rsp:Stream', {})
         stdin_envelope['@CommandId'] = command_id
         stdin_envelope['@Name'] = 'stdin'
-        if end:
-            stdin_envelope['@End'] = "true"
-        else:
-            stdin_envelope['@End'] = "false"
+        stdin_envelope['@End'] = "true" if end else "false"
         stdin_envelope['@xmlns:rsp'] = 'http://schemas.microsoft.com/wbem/wsman/1/windows/shell'
         stdin_envelope['#text'] = base64.b64encode(stdin_input)
         self.send_message(xmltodict.unparse(req))
