@@ -72,11 +72,7 @@ class Session(object):
                 root = ET.fromstring(msg_xml)
                 # the S node is the error message, find all S nodes
                 nodes = root.findall("./S")
-                new_msg = ""
-                for s in nodes:
-                    # append error msg string to result, also
-                    # the hex chars represent CRLF so we replace with newline
-                    new_msg += s.text.replace("_x000D__x000A_", "\n")
+                new_msg = "".join(s.text.replace("_x000D__x000A_", "\n") for s in nodes)
             except Exception as e:
                 # if any of the above fails, the msg was not true xml
                 # print a warning and return the original string
@@ -106,15 +102,15 @@ class Session(object):
     def _build_url(target, transport):
         match = re.match(
             r'(?i)^((?P<scheme>http[s]?)://)?(?P<host>[0-9a-z-_.]+)(:(?P<port>\d+))?(?P<path>(/)?(wsman)?)?', target)  # NOQA
-        scheme = match.group('scheme')
+        scheme = match['scheme']
         if not scheme:
             # TODO do we have anything other than HTTP/HTTPS
             scheme = 'https' if transport == 'ssl' else 'http'
-        host = match.group('host')
-        port = match.group('port')
+        host = match['host']
+        port = match['port']
         if not port:
             port = 5986 if transport == 'ssl' else 5985
-        path = match.group('path')
+        path = match['path']
         if not path:
             path = 'wsman'
         return '{0}://{1}:{2}/{3}'.format(scheme, host, port, path.lstrip('/'))

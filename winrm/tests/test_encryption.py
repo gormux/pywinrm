@@ -262,8 +262,7 @@ class CredSSPContext(object):
 
     # used with CredSSP
     def unwrap(self, message):
-        decoded_mesage = self.session_security.unwrap(message, b"1234")
-        return decoded_mesage
+        return self.session_security.unwrap(message, b"1234")
 
 
 class AuthTest(object):
@@ -285,8 +284,7 @@ class SessionSecurityTest(object):
 
     def unwrap(self, message, signature):
         assert signature == b"1234"
-        decoded_message = base64.b64decode(message)
-        return decoded_message
+        return base64.b64decode(message)
 
 
 class RequestTest(object):

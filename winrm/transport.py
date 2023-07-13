@@ -13,13 +13,8 @@ is_py2 = sys.version[0] == '2'
 DISPLAYED_PROXY_WARNING = False
 DISPLAYED_CA_TRUST_WARNING = False
 
-if is_py2:
-    # use six for this instead?
-    unicode_type = type(u'')
-else:
-    # use six for this instead?
-    unicode_type = type(u'')
-
+# use six for this instead?
+unicode_type = type(u'')
 HAVE_KERBEROS = False
 try:
     from winrm.vendor.requests_kerberos import HTTPKerberosAuth, REQUIRED
@@ -56,7 +51,7 @@ def strtobool(value):
         return False
 
     else:
-        raise ValueError("invalid truth value '%s'" % value)
+        raise ValueError(f"invalid truth value '{value}'")
 
 
 class UnsupportedAuthArgument(Warning):
@@ -97,7 +92,9 @@ class Transport(object):
         self.proxy = proxy
 
         if self.server_cert_validation not in [None, 'validate', 'ignore']:
-            raise WinRMError('invalid server_cert_validation mode: %s' % self.server_cert_validation)
+            raise WinRMError(
+                f'invalid server_cert_validation mode: {self.server_cert_validation}'
+            )
 
         # defensively parse this to a bool
         if isinstance(kerberos_delegation, bool):
@@ -145,15 +142,21 @@ class Transport(object):
                 if not self.cert_pem or not self.cert_key_pem:
                     raise InvalidCredentialsError("both cert_pem and cert_key_pem must be specified for cert auth")
                 if not os.path.exists(self.cert_pem):
-                    raise InvalidCredentialsError("cert_pem file not found (%s)" % self.cert_pem)
+                    raise InvalidCredentialsError(f"cert_pem file not found ({self.cert_pem})")
                 if not os.path.exists(self.cert_key_pem):
-                    raise InvalidCredentialsError("cert_key_pem file not found (%s)" % self.cert_key_pem)
+                    raise InvalidCredentialsError(
+                        f"cert_key_pem file not found ({self.cert_key_pem})"
+                    )
 
             else:
                 if not self.username:
-                    raise InvalidCredentialsError("auth method %s requires a username" % self.auth_method)
+                    raise InvalidCredentialsError(
+                        f"auth method {self.auth_method} requires a username"
+                    )
                 if self.password is None:
-                    raise InvalidCredentialsError("auth method %s requires a password" % self.auth_method)
+                    raise InvalidCredentialsError(
+                        f"auth method {self.auth_method} requires a password"
+                    )
 
         self.session = None
 
@@ -161,11 +164,12 @@ class Transport(object):
         self.encryption = None  # The Pywinrm Encryption class used to encrypt/decrypt messages
         if self.message_encryption not in ['auto', 'always', 'never']:
             raise WinRMError(
-                "invalid message_encryption arg: %s. Should be 'auto', 'always', or 'never'" % self.message_encryption)
+                f"invalid message_encryption arg: {self.message_encryption}. Should be 'auto', 'always', or 'never'"
+            )
 
     def build_session(self):
         session = requests.Session()
-        proxies = dict()
+        proxies = {}
 
         if self.proxy is None:
             proxies['no_proxy'] = '*'
@@ -185,7 +189,7 @@ class Transport(object):
         if not DISPLAYED_PROXY_WARNING and self.proxy == 'legacy_requests' and (
                 'http' in settings['proxies'] or 'https' in settings['proxies']):
             message = "'pywinrm' will use an environment defined proxy. This feature will be disabled in " \
-                      "the future, please specify it explicitly."
+                          "the future, please specify it explicitly."
             if 'http' in settings['proxies']:
                 message += " HTTP proxy {proxy} discovered.".format(proxy=settings['proxies']['http'])
             if 'https' in settings['proxies']:
@@ -199,9 +203,8 @@ class Transport(object):
         # specified validation mode takes precedence
         session.verify = self.server_cert_validation == 'validate'
 
-        # patch in CA path override if one was specified in init or env
-        if session.verify:
-            if self.ca_trust_path == 'legacy_requests' and settings['verify'] is not None:
+        if self.ca_trust_path == 'legacy_requests' and settings['verify'] is not None:
+            if session.verify:
                 # We will
                 session.verify = settings['verify']
 
@@ -211,7 +214,7 @@ class Transport(object):
                 # Also only display the warning once. This method can be called many times during an application's runtime.
                 if not DISPLAYED_CA_TRUST_WARNING and session.verify is not True:
                     message = "'pywinrm' will use an environment variable defined CA Trust. This feature will be disabled in " \
-                              "the future, please specify it explicitly."
+                                  "the future, please specify it explicitly."
                     if os.environ.get('REQUESTS_CA_BUNDLE') is not None:
                         message += " REQUESTS_CA_BUNDLE contains {ca_path}".format(ca_path=os.environ.get('REQUESTS_CA_BUNDLE'))
                     elif os.environ.get('CURL_CA_BUNDLE') is not None:
@@ -220,9 +223,9 @@ class Transport(object):
                     DISPLAYED_CA_TRUST_WARNING = True
                     warnings.warn(message, DeprecationWarning)
 
-            elif session.verify and self.ca_trust_path is not None:
-                # session.verify can be either a bool or path to a CA store; prefer passed-in value over env if both are present
-                session.verify = self.ca_trust_path
+        elif session.verify and self.ca_trust_path is not None:
+            # session.verify can be either a bool or path to a CA store; prefer passed-in value over env if both are present
+            session.verify = self.ca_trust_path
 
         encryption_available = False
 
@@ -253,7 +256,7 @@ class Transport(object):
             else:
                 session.cert = (self.cert_pem, self.cert_key_pem)
                 session.headers['Authorization'] = \
-                    "http://schemas.dmtf.org/wbem/wsman/1/wsman/secprofile/https/mutual"
+                        "http://schemas.dmtf.org/wbem/wsman/1/wsman/secprofile/https/mutual"
         elif self.auth_method == 'ntlm':
             if not HAVE_NTLM:
                 raise WinRMError("requested auth method is ntlm, but requests_ntlm is not installed")
@@ -268,7 +271,6 @@ class Transport(object):
             session.auth = HttpNtlmAuth(**ntlm_args)
             # check if requests_ntlm has the session_security attribute available for encryption
             encryption_available = hasattr(session.auth, 'session_security')
-        # TODO: ssl is not exactly right here- should really be client_cert
         elif self.auth_method in ['basic', 'plaintext']:
             session.auth = requests.auth.HTTPBasicAuth(username=self.username, password=self.password)
         elif self.auth_method == 'credssp':
@@ -288,7 +290,7 @@ class Transport(object):
             session.auth = HttpCredSSPAuth(**credssp_args)
             encryption_available = True
         else:
-            raise WinRMError("unsupported auth method: %s" % self.auth_method)
+            raise WinRMError(f"unsupported auth method: {self.auth_method}")
 
         session.headers.update(self.default_headers)
         self.session = session
@@ -296,7 +298,8 @@ class Transport(object):
         # Will check the current config and see if we need to setup message encryption
         if self.message_encryption == 'always' and not encryption_available:
             raise WinRMError(
-                "message encryption is set to 'always' but the selected auth method %s does not support it" % self.auth_method)
+                f"message encryption is set to 'always' but the selected auth method {self.auth_method} does not support it"
+            )
         elif encryption_available:
             if self.message_encryption == 'always':
                 self.setup_encryption()
@@ -350,15 +353,15 @@ class Transport(object):
             raise WinRMTransportError('http', ex.response.status_code, response_text)
 
     def _get_message_response_text(self, response):
-        if self.encryption:
-            response_text = self.encryption.parse_encrypted_response(response)
-        else:
-            response_text = response.content
-        return response_text
+        return (
+            self.encryption.parse_encrypted_response(response)
+            if self.encryption
+            else response.content
+        )
 
     def _get_args(self, mandatory_args, optional_args, function):
         argspec = set(inspect.getargspec(function).args)
-        function_args = dict()
+        function_args = {}
         for name, value in mandatory_args.items():
             if name in argspec:
                 function_args[name] = value
